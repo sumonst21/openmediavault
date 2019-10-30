@@ -17,20 +17,16 @@
 # You should have received a copy of the GNU General Public License
 # along with OpenMediaVault. If not, see <http://www.gnu.org/licenses/>.
 
-{% for file in salt['file.find']('/etc/systemd/network/', iname='^(*-)?openmediavault-*.network$', print='name') | sort %}
+# Prevent the TTY error "mesg: ttyname failed: Inappropriate ioctl for device".
+# Note, we only need to modify /root/.profile, the skeleton file at
+# /etc/skel/.profile does not contain the problematic line.
 
-{% set ifname = file | regex_search('^\d+-openmediavault-(.+)\.network$') | first %}
+# See post in the forum:
+# https://forum.openmediavault.org/index.php/Thread/20966-mesg-ttyname-failed-Inappropriate-ioctl-for-device/?postID=163028#post163028
 
-flush_interface_{{ ifname }}:
-  cmd.run:
-    - name: "ip addr flush dev {{ ifname }}"
-    - onlyif: "test -e /sys/class/net/{{ ifname }}"
-
-{% endfor %}
-
-remove_systemd_networkd_config_files:
-  module.run:
-    - file.find:
-      - path: "/etc/systemd/network/"
-      - iname: '^(*-)?openmediavault-*'
-      - delete: "f"
+modify_root_profile:
+  file.replace:
+    - name: '/root/.profile'
+    - pattern: '^{{ 'mesg n || true' | regex_escape }}$'
+    - repl: 'test -t 0 && mesg n || true'
+    - ignore_if_missing: True

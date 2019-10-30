@@ -27,9 +27,9 @@
 
 {% for interface in interfaces %}
 
-configure_interface_vlan_{{ interface.vlanrawdevice }}.{{ interface.vlanid }}_netdev:
+configure_interface_vlan_{{ interface.devicename }}_netdev:
   file.managed:
-    - name: "/etc/systemd/network/openmediavault-{{ interface.vlanrawdevice }}.{{ interface.vlanid }}.netdev"
+    - name: "/etc/systemd/network/99-openmediavault-{{ interface.devicename }}.netdev"
     - source:
       - salt://{{ slspath }}/files/vlan_netdev.j2
     - template: jinja
@@ -39,11 +39,11 @@ configure_interface_vlan_{{ interface.vlanrawdevice }}.{{ interface.vlanid }}_ne
     - group: root
     - mode: 644
 
-configure_interface_vlan_{{ interface.vlanrawdevice }}.{{ interface.vlanid }}_network:
+configure_interface_vlan_{{ interface.devicename }}_network:
   file.managed:
-    - name: "/etc/systemd/network/openmediavault-{{ interface.vlanrawdevice }}.{{ interface.vlanid }}.network"
+    - name: "/etc/systemd/network/99-openmediavault-{{ interface.devicename }}.network"
     - source:
-      - salt://{{ slspath }}/files/vlan_network.j2
+      - salt://{{ slspath }}/files/vlan_id_network.j2
     - template: jinja
     - context:
         interface: {{ interface | json }}
@@ -51,14 +51,32 @@ configure_interface_vlan_{{ interface.vlanrawdevice }}.{{ interface.vlanid }}_ne
     - group: root
     - mode: 644
 
-configure_interface_vlan_{{ interface.vlanrawdevice }}_network:
-  file.touch:
-    - name: "/etc/systemd/network/openmediavault-{{ interface.vlanrawdevice }}.network"
-  ini.options_present:
-    - name: "/etc/systemd/network/openmediavault-{{ interface.vlanrawdevice }}.network"
-    - separator: "="
-    - sections:
-        Network:
-          VLAN: {{ interface.vlanrawdevice }}.{{ interface.vlanid }}
+configure_interface_vlan_{{ interface.devicename }}_link:
+  file.managed:
+    - name: "/etc/systemd/network/99-openmediavault-{{ interface.devicename }}.link"
+    - source:
+      - salt://{{ slspath }}/files/link.j2
+    - template: jinja
+    - context:
+        interface: {{ interface | json }}
+    - user: root
+    - group: root
+    - mode: 644
+
+{% endfor %}
+
+{% for devicename in interfaces | map(attribute='vlanrawdevice') | unique %}
+
+configure_interface_vlan_{{ devicename }}_network:
+  file.managed:
+    - name: "/etc/systemd/network/99-openmediavault-{{ devicename }}.network"
+    - source:
+      - salt://{{ slspath }}/files/vlan_network.j2
+    - template: jinja
+    - context:
+        interfaces: {{ interfaces | selectattr('vlanrawdevice', 'equalto', devicename) | list | json }}
+    - user: root
+    - group: root
+    - mode: 644
 
 {% endfor %}
