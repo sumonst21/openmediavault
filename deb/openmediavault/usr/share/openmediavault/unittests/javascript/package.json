@@ -6,7 +6,7 @@
 		"test": "tests"
 	},
 	"dependencies": {
-		"jest": "^24.8.0"
+		"jest": "^29.6.4"
 	},
 	"devDependencies": {},
 	"scripts": {
